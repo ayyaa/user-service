@@ -16,17 +16,28 @@
 -- INSERT INTO test (name) VALUES ('test1');
 -- INSERT INTO test (name) VALUES ('test2');
 
+-- CREATE TABLE public.users
+-- (
+--     id bigserial NOT NULL,
+--     uuid character varying(60),
+--     slug character varying(255),
+--     email character varying(100),
+--     password character varying(60),
+--     name character varying(60),
+--     phone character varying(13),
+--     updated_at time without time zone,
+--     created_at time without time zone,
+--     CONSTRAINT pk_users_id PRIMARY KEY (id)
+-- );
+
 CREATE TABLE public.users
 (
     id bigserial NOT NULL,
-    uuid character varying(60),
-    slug character varying(255),
-    email character varying(100),
     password character varying(60),
     name character varying(60),
     phone character varying(13),
-    updated_at time without time zone,
-    created_at time without time zone,
+    updated_at timestamp DEFAULT CURRENT_TIMESTAMP,
+    created_at timestamp DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT pk_users_id PRIMARY KEY (id)
 );
 
@@ -34,5 +45,5 @@ ALTER TABLE IF EXISTS public.users
     OWNER to postgres;
 
 
-INSERT INTO users (uuid, slug, email, name, password, name, phone, updated_at, created_at) 
-VALUES (uuid_generate_v4(), 'ayya', 'tsurayya@gmail.com', 'tsurayya', '123', '+6281219823417', NOW(), NOW());
+INSERT INTO users ( name, password, phone, updated_at, created_at) 
+VALUES ( 'tsurayya', '123', '+6281219823417', NOW(), NOW());

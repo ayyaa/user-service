@@ -23,14 +23,31 @@ var errorMapp map[string]string = map[string]string{
 	"max":      "should be less than",
 }
 
+// func validateStruct(key string, s interface{}) (fieldname string) {
+// 	rt := reflect.TypeOf(s)
+// 	if rt.Kind() != reflect.Struct {
+// 		panic("bad type")
+// 	}
+// 	for i := 0; i < rt.NumField(); i++ {
+// 		f := rt.Field(i)
+// 		v := strings.Split(f.Tag.Get(key), ",")[0] // use split to ignore tag "options" like omitempty, etc.
+// 		if v == tag {
+// 			return f.Name
+// 		}
+// 	}
+// 	return ""
+// }
+
 func UserValidation(user generated.RegisterUserRequest) (bool, map[string][]string) {
 	var errList map[string][]string
 	isValid := true
 	message := ""
 	fmt.Println(user)
+	fmt.Println(user.Name)
+	// "name"
 	for i, v := range userValidation {
-		validate := validator.New()
-		err := validate.Var(i, v)
+		fmt.Println(i)
+		fmt.Println(v)
 		var (
 			min         int
 			max         int
@@ -39,7 +56,12 @@ func UserValidation(user generated.RegisterUserRequest) (bool, map[string][]stri
 		fmt.Sscanf(v, "required,min=%d,max=%d", &min, &max)
 		fmt.Println(max)
 		fmt.Println(min)
+
+		validate := validator.New()
+		err := validate.Var(i, v)
+		fmt.Println(err)
 		if err != nil {
+
 			if strings.Contains(err.Error(), "required") {
 				message = fmt.Sprintf("%s %s", i, errorMapp["required"])
 			}
@@ -58,14 +80,14 @@ func UserValidation(user generated.RegisterUserRequest) (bool, map[string][]stri
 
 		}
 
-		errList[i] = append(messageList, messageList...)
+		// errList[i] = append(messageList, messageList...)
 
-		switch i {
-		case "phone":
-			isValid, errList = PhoneValidation(user.Phone, errList)
-		case "password":
-			isValid, errList = PasswordValidation(user.Password, errList)
-		}
+		// switch i {
+		// case "phone":
+		// 	isValid, errList = PhoneValidation(user.Phone, errList)
+		// case "password":
+		// 	isValid, errList = PasswordValidation(user.Password, errList)
+		// }
 
 	}
 

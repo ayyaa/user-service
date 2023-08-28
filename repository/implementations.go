@@ -1,16 +1,22 @@
 package repository
 
-import "context"
+import (
+	"context"
+	"time"
 
-func (r *Repository) Insert(ctx context.Context, user User) (id int, err error) {
-	query := `INSERT INTO users (uuid, slug, name, phone, password) VALUES ($1, $2, $4, $5, $6) RETURNING id`
+	"github.com/SawitProRecruitment/UserService/generated"
+)
+
+func (r *Repository) Insert(ctx context.Context, user generated.RegisterUserRequest) (id int, err error) {
+	now := time.Now()
+	query := `INSERT INTO users (name, phone, password, updated_at, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id`
 
 	err = r.DB.QueryRowContext(ctx, query,
-		user.UUID,
-		user.Slug,
 		user.Name,
 		user.Phone,
 		user.Password,
+		now,
+		now,
 	).Scan(&id)
 
 	if err != nil {

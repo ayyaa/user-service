@@ -21,13 +21,16 @@ func (s *Server) Register(ctx echo.Context) error {
 
 	var resp generated.RegisterUserResponse
 
-	isValid, errList := UserValidation(newUser)
+	// isValid, errList := UserValidation(newUser)
 
-	fmt.Println(isValid)
-	fmt.Println(errList)
+	// fmt.Println(isValid)
+	// fmt.Println(errList)
 
 	// var id = repository.GetTestByIdInput{1}
-	// name, err := s.Repository.GetTestById(ctx.Request().Context(), id)
+	id, err := s.Repository.Insert(ctx.Request().Context(), newUser)
+
+	fmt.Println(err)
+	fmt.Println(id)
 
 	// if err != nil {
 	// 	fmt.Println(err)

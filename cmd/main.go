@@ -1,11 +1,13 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"github.com/SawitProRecruitment/UserService/generated"
 	"github.com/SawitProRecruitment/UserService/handler"
 	"github.com/SawitProRecruitment/UserService/repository"
+	"github.com/joho/godotenv"
 
 	"github.com/labstack/echo/v4"
 )
@@ -20,7 +22,13 @@ func main() {
 }
 
 func newServer() *handler.Server {
+
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Some error occured. Err: %s", err)
+	}
 	dbDsn := os.Getenv("DATABASE_URL")
+
 	var repo repository.RepositoryInterface = repository.NewRepository(repository.NewRepositoryOptions{
 		Dsn: dbDsn,
 	})
