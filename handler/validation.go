@@ -2,14 +2,10 @@ package handler
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
-
-	"github.com/SawitProRecruitment/UserService/generated"
-	"github.com/go-playground/validator/v10"
 )
-
-var _validator *validator.Validate
 
 var userValidation map[string]string = map[string]string{
 	"name":     "required,min=3,max=60",
@@ -23,79 +19,69 @@ var errorMapp map[string]string = map[string]string{
 	"max":      "should be less than",
 }
 
-// func validateStruct(key string, s interface{}) (fieldname string) {
-// 	rt := reflect.TypeOf(s)
-// 	if rt.Kind() != reflect.Struct {
-// 		panic("bad type")
-// 	}
-// 	for i := 0; i < rt.NumField(); i++ {
-// 		f := rt.Field(i)
-// 		v := strings.Split(f.Tag.Get(key), ",")[0] // use split to ignore tag "options" like omitempty, etc.
-// 		if v == tag {
-// 			return f.Name
-// 		}
-// 	}
-// 	return ""
-// }
-
-func UserValidation(user generated.RegisterUserRequest) (bool, map[string][]string) {
-	var errList map[string][]string
+func UserValidation(user interface{}) (bool, []string) {
+	rt := reflect.TypeOf(user)
+	values := reflect.ValueOf(user)
+	if rt.Kind() != reflect.Struct {
+		panic("bad type")
+	}
+	var errorMessages []string
 	isValid := true
 	message := ""
-	fmt.Println(user)
-	fmt.Println(user.Name)
-	// "name"
-	for i, v := range userValidation {
-		fmt.Println(i)
-		fmt.Println(v)
+
+	for i := 0; i < values.NumField(); i++ {
+		isValid = true
 		var (
-			min         int
-			max         int
-			messageList []string
+			min int
+			max int
 		)
-		fmt.Sscanf(v, "required,min=%d,max=%d", &min, &max)
-		fmt.Println(max)
-		fmt.Println(min)
 
-		validate := validator.New()
-		err := validate.Var(i, v)
-		fmt.Println(err)
-		if err != nil {
+		jsonTag := strings.Split(rt.Field(i).Tag.Get("json"), ",")[0]
 
-			if strings.Contains(err.Error(), "required") {
-				message = fmt.Sprintf("%s %s", i, errorMapp["required"])
+		fmt.Sscanf(userValidation[jsonTag], "required,min=%d,max=%d", &min, &max)
+
+		val := values.Field(i).Interface()
+		if ok := strings.Contains(userValidation[jsonTag], "required"); ok {
+			if res, ok := val.(string); ok && res == "" {
+				isValid = false
+				message = fmt.Sprintf("%s %s", jsonTag, errorMapp["required"])
+				errorMessages = append(errorMessages, message)
 			}
-
-			if strings.Contains(err.Error(), "max") {
-				message = fmt.Sprintf("%s %s %v", i, errorMapp["max"], max)
-			}
-
-			if strings.Contains(err.Error(), "min") {
-				message = fmt.Sprintf("%s %s %v", i, errorMapp["min"], min)
-			}
-
-			isValid = false
-			fmt.Println(message)
-			messageList = append(messageList, message)
-
 		}
 
-		// errList[i] = append(messageList, messageList...)
+		if isValid {
+			if ok := strings.Contains(userValidation[jsonTag], "max"); ok {
+				if len(val.(string)) > max {
+					isValid = false
+					message = fmt.Sprintf("%s %s %d %s", jsonTag, errorMapp["max"], max, "character")
+					errorMessages = append(errorMessages, message)
 
-		// switch i {
-		// case "phone":
-		// 	isValid, errList = PhoneValidation(user.Phone, errList)
-		// case "password":
-		// 	isValid, errList = PasswordValidation(user.Password, errList)
-		// }
+				}
+			}
+
+			if ok := strings.Contains(userValidation[jsonTag], "min"); ok {
+				if len(val.(string)) < min {
+					isValid = false
+					message += fmt.Sprintf("%s %s %d %s", jsonTag, errorMapp["min"], min, "character")
+					errorMessages = append(errorMessages, message)
+				}
+			}
+		}
+
+		switch jsonTag {
+		case "phone":
+			isValid, errorMessages = PhoneValidation(val.(string), errorMessages)
+		case "password":
+			isValid, errorMessages = PasswordValidation(val.(string), errorMessages)
+		}
 
 	}
 
-	return isValid, errList
+	return isValid, errorMessages
 }
 
-func PhoneValidation(phone string, errList map[string][]string) (bool, map[string][]string) {
-	var messageList []string
+func PhoneValidation(phone string, errList []string) (bool, []string) {
+	var errorMessages []string
 	isValid := true
 	message := ""
 	pattern := regexp.MustCompile(`^\+62\d{8,11}$`)
@@ -103,45 +89,42 @@ func PhoneValidation(phone string, errList map[string][]string) (bool, map[strin
 
 	if !matched {
 		isValid = false
-		message = fmt.Sprintf(`%s`, "must start with +62")
-		messageList = append(messageList, message)
+		message = fmt.Sprintf(`%s`, "Phone must start with +62")
+		errorMessages = append(errorMessages, message)
 	}
 
-	errList["phone"] = append(messageList, messageList...)
+	errList = append(errList, errorMessages...)
 	return isValid, errList
 
 }
 
-func PasswordValidation(password string, errList map[string][]string) (bool, map[string][]string) {
-	var messageList []string
+func PasswordValidation(password string, errList []string) (bool, []string) {
+	var errorMessages []string
 	isValid := true
 	message := ""
 	pattern := regexp.MustCompile(`[A-Z]`)
 	containsCapital := pattern.MatchString(password)
-
 	if !containsCapital {
 		isValid = false
-		message = fmt.Sprintf(`%s`, "contains at least 1 Capital")
-		messageList = append(messageList, message)
+		message = fmt.Sprintf(`%s`, "Password contains at least 1 Capital")
+		errorMessages = append(errorMessages, message)
 	}
-
 	pattern = regexp.MustCompile(`\d`)
 	containsNumber := pattern.MatchString(password)
 
 	if !containsNumber {
 		isValid = false
-		message = "contains at least 1 number"
-		messageList = append(messageList, message)
+		message = "Password contains at least 1 number"
+		errorMessages = append(errorMessages, message)
 	}
-
 	pattern = regexp.MustCompile(`\W`)
 	containsSpecialChar := pattern.MatchString(password)
 	if !containsSpecialChar {
 		isValid = false
-		message = "contains at least 1 spesial character"
-		messageList = append(messageList, message)
+		message = "Password contains at least 1 spesial character"
+		errorMessages = append(errorMessages, message)
 	}
 
-	errList["password"] = append(messageList, messageList...)
+	errList = append(errList, errorMessages...)
 	return isValid, errList
 }

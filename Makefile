@@ -35,3 +35,7 @@ generate_mocks: $(INTERFACES_GEN_GO_FILES)
 $(INTERFACES_GEN_GO_FILES): %.mock.gen.go: %.go
 	@echo "Generating mocks $@ for $<"
 	mockgen -source=$< -destination=$@ -package=$(shell basename $(dir $<))
+
+generate_keys: 
+	openssl genpkey -algorithm RSA -out private.pem -pkeyopt rsa_keygen_bits:2048
+	openssl rsa -pubout -in private.pem -out public.pem

@@ -33,45 +33,171 @@ paths:
           content:
             application/json:    
               schema:
-                $ref: "#/components/schemas/RegisterUserResponse"
+                $ref: "#/components/schemas/UserId"
         '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
-components:
-  schemas:
-    RegisterUserRequest:
-      type: object
-      required:
-        - name
-        - phone
-        - password
-      properties:
-        name: 
-          type: string
-        phone:
-          type: string
-        password: 
-          type: string
+                $ref: "#/components/schemas/Message"
+  /login:
+    post:
+      summary: login
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginReq'
+      responses:
+        '200':
+          description: Success Login
+          content:
+            application/json:    
+              schema:
+                $ref: "#/components/schemas/SuccessLogin"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+  /protected:
+    get:
+      summary: Get User by Id
+      security:
+        - jwt: []
+      operationId: protected
+      responses:
+        '200':
+          description: Success Register User
+          content:
+            application/json:    
+              schema:
+                $ref: "#/components/schemas/UserShort"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message" 
+  /user/:id:
+    get:
+      summary: Get User by Id
+      operationId: get user
+      responses:
+        '200':
+          description: Success Register User
+          content:
+            application/json:    
+              schema:
+                $ref: "#/components/schemas/UserShort"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message" 
+    patch:
+      summary: Edit User by Id
+      operationId: edit user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserShort'
 
-    RegisterUserResponse:
+      responses:
+        '200':
+          description: Success Update User
+          content:
+            application/json:    
+              schema:
+                $ref: "#/components/schemas/Message"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"             
+securityDefinitions:
+  jwt:
+    type: apiKey
+    name: Authorization
+    in: header 
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    UserId:
       type: object
       required:
         - id
       properties:
         id: 
           type: string
-        phone:
-          type: string
-        password: 
-          type: string
-
-    ErrorMessage:
+    Name:
       type: object
       required:
+        - name
+      properties:
+        name: 
+          type: string
+    Password:
+      type: object
+      required:
+        - password
+      properties:
+        password: 
+          type: string
+    Phone:
+      type: object
+      required:
+        - phone
+      properties:
+        phone: 
+          type: string
+    Message:
+      type: object
+      required:
+        - status
         - message
       properties:
         message:
           type: string
+        status:
+          type: boolean
+    Token:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+    RegisterUserRequest:
+      allOf:
+        - $ref: '#/components/schemas/Name'
+        - $ref: '#/components/schemas/Phone'
+        - $ref: '#/components/schemas/Password'
+    UserShort:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Name'
+        - $ref: '#/components/schemas/Phone'
+    LoginReq:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Phone'
+        - $ref: '#/components/schemas/Password'
+    SuccessLogin:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Message'
+        - $ref: '#/components/schemas/Token'
+        
+

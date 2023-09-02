@@ -6,10 +6,11 @@ package repository
 
 import (
 	"context"
-
-	"github.com/SawitProRecruitment/UserService/generated"
 )
 
 type RepositoryInterface interface {
-	Insert(ctx context.Context, user generated.RegisterUserRequest) (id int, err error)
+	Insert(ctx context.Context, user UserReq) (id int, err error)
+	GetUserByID(ctx context.Context, id int) (user UserRes, err error)
+	EditUser(ctx context.Context, user UserReq, id int) (err error)
+	GetUserByPhone(ctx context.Context, phone string) (user UserRes, err error)
 }

@@ -35,15 +35,10 @@ CREATE TABLE public.users
     id bigserial NOT NULL,
     password character varying(60),
     name character varying(60),
-    phone character varying(13),
+    phone character varying(15) UNIQUE,
     updated_at timestamp DEFAULT CURRENT_TIMESTAMP,
     created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_users_id PRIMARY KEY (id)
+    CONSTRAINT pk_users_id PRIMARY KEY (id),
+    CONSTRAINT uq_users_phone UNIQUE (phone)
+
 );
-
-ALTER TABLE IF EXISTS public.users
-    OWNER to postgres;
-
-
-INSERT INTO users ( name, password, phone, updated_at, created_at) 
-VALUES ( 'tsurayya', '123', '+6281219823417', NOW(), NOW());
