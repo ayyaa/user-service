@@ -2,57 +2,63 @@ package repository
 
 import (
 	"context"
-	"time"
 )
 
-func (r *Repository) Insert(ctx context.Context, user UserReq) (id int, err error) {
-	now := time.Now()
-	query := `INSERT INTO users (name, phone, password, updated_at, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id`
+const (
+	QueryInsertUser = `INSERT INTO users (full_name, phone_number, password) VALUES ($1, $2, $3) RETURNING id`
+	QueryGetUserById = `SELECT id, full_name, phone_number FROM users WHERE id = $1`
+	QueryGetUserByPhone = `SELECT id, full_name, phone_number, password FROM users WHERE phone_number = $1`
+	QueryUpdateUser = `SELECT id, full_name, phone_number, password FROM users WHERE phone_number = $1`
+)
 
-	err = r.DB.QueryRowContext(ctx, query,
-		user.Name,
-		user.Phone,
+
+// repo insert table users
+func (r *Repository) Insert(ctx context.Context, user UserReq) (id int, err error) {
+	err = r.DB.QueryRowContext(ctx, QueryInsertUser,
+		user.FullName,
+		user.PhoneNumber,
 		user.Password,
-		now,
-		now,
 	).Scan(&id)
 
+	// check if any error
 	if err != nil {
 		return id, err
 	}
 	return id, err
 }
 
-func (r *Repository) GetUserByID(ctx context.Context, id int) (user UserRes, err error) {
-	query := `SELECT id, name, phone FROM users WHERE id = $1`
 
-	err = r.DB.QueryRowContext(ctx, query,
+// repo get user by id from table users
+func (r *Repository) GetUserByID(ctx context.Context, id int) (user UserRes, err error) {
+	err = r.DB.QueryRowContext(ctx, QueryGetUserById,
 		id,
-	).Scan(&user.Id, &user.Name, &user.Phone)
+	).Scan(&user.Id, &user.FullName, &user.PhoneNumber)
+
+	// check if any error
 	if err != nil {
 		return user, err
 	}
 	return user, err
 }
 
-func (r *Repository) EditUser(ctx context.Context, user UserReq, id int) (err error) {
-	query := `UPDATE users SET name = $1, phone = $2 WHERE id = $3`
+// repo update user table users
+func (r *Repository) UpdateUser(ctx context.Context, user UserReq, id int) (err error) {
+	_, err = r.DB.ExecContext(ctx, QueryGetUserByPhone, user.FullName, user.PhoneNumber, id)
 
-	_, err = r.DB.ExecContext(ctx, query, user.Name, user.Phone, id)
-
+	// check if any error
 	if err != nil {
 		return err
 	}
 	return err
 }
 
-func (r *Repository) GetUserByPhone(ctx context.Context, phone string) (user UserRes, err error) {
-	query := `SELECT id, name, phone, password FROM users WHERE phone = $1 `
+// repo get user by phone_number from table users
+func (r *Repository) GetUserByPhone(ctx context.Context, phoneNumber string) (user UserRes, err error) {
+	err = r.DB.QueryRowContext(ctx, QueryUpdateUser, phoneNumber).Scan(&user.Id, &user.FullName, &user.PhoneNumber, &user.Password)
 
-	err = r.DB.QueryRowContext(ctx, query,
-		phone,
-	).Scan(&user.Id, &user.Name, &user.Phone, &user.Password)
+	// check if any error
 	if err != nil {
+		// check if any error sql no rows
 		if err.Error() == "sql: no rows in result set" {
 			return user, nil
 		}

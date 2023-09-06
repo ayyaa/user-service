@@ -8,37 +8,14 @@
   */
 
 /** This is test table. Remove this table and replace with your own tables. */
--- CREATE TABLE test (
--- 	id serial PRIMARY KEY,
--- 	name VARCHAR ( 50 ) UNIQUE NOT NULL,
--- );
-
--- INSERT INTO test (name) VALUES ('test1');
--- INSERT INTO test (name) VALUES ('test2');
-
--- CREATE TABLE public.users
--- (
---     id bigserial NOT NULL,
---     uuid character varying(60),
---     slug character varying(255),
---     email character varying(100),
---     password character varying(60),
---     name character varying(60),
---     phone character varying(13),
---     updated_at time without time zone,
---     created_at time without time zone,
---     CONSTRAINT pk_users_id PRIMARY KEY (id)
--- );
-
 CREATE TABLE public.users
 (
     id bigserial NOT NULL,
     password character varying(60),
-    name character varying(60),
-    phone character varying(15) UNIQUE,
+    full_name character varying(60),
+    phone_number character varying(15) UNIQUE,
     updated_at timestamp DEFAULT CURRENT_TIMESTAMP,
     created_at timestamp DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT pk_users_id PRIMARY KEY (id),
-    CONSTRAINT uq_users_phone UNIQUE (phone)
-
+    CONSTRAINT uq_users_phone UNIQUE (phone_number)
 );

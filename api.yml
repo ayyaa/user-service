@@ -63,29 +63,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Message"
-  /protected:
+  /my-profile:
     get:
       summary: Get User by Id
+      operationId: GetUser
       security:
-        - jwt: []
-      operationId: protected
-      responses:
-        '200':
-          description: Success Register User
-          content:
-            application/json:    
-              schema:
-                $ref: "#/components/schemas/UserShort"
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Message" 
-  /user/:id:
-    get:
-      summary: Get User by Id
-      operationId: get user
+        - BearerAuth: []
       responses:
         '200':
           description: Success Register User
@@ -101,7 +84,9 @@ paths:
                 $ref: "#/components/schemas/Message" 
     patch:
       summary: Edit User by Id
-      operationId: edit user
+      security:
+        - BearerAuth: []
+      operationId: EditUser
       requestBody:
         required: true
         content:
@@ -129,7 +114,7 @@ securityDefinitions:
     in: header 
 components:
   securitySchemes:
-    bearerAuth:
+    BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
@@ -141,12 +126,12 @@ components:
       properties:
         id: 
           type: string
-    Name:
+    FullName:
       type: object
       required:
-        - name
+        - full_name
       properties:
-        name: 
+        full_name: 
           type: string
     Password:
       type: object
@@ -155,12 +140,12 @@ components:
       properties:
         password: 
           type: string
-    Phone:
+    PhoneNumber:
       type: object
       required:
-        - phone
+        - phone_number
       properties:
-        phone: 
+        phone_number: 
           type: string
     Message:
       type: object
@@ -181,18 +166,18 @@ components:
           type: string
     RegisterUserRequest:
       allOf:
-        - $ref: '#/components/schemas/Name'
-        - $ref: '#/components/schemas/Phone'
+        - $ref: '#/components/schemas/FullName'
+        - $ref: '#/components/schemas/PhoneNumber'
         - $ref: '#/components/schemas/Password'
     UserShort:
       type: object
       allOf:
-        - $ref: '#/components/schemas/Name'
-        - $ref: '#/components/schemas/Phone'
+        - $ref: '#/components/schemas/FullName'
+        - $ref: '#/components/schemas/PhoneNumber'
     LoginReq:
       type: object
       allOf:
-        - $ref: '#/components/schemas/Phone'
+        - $ref: '#/components/schemas/PhoneNumber'
         - $ref: '#/components/schemas/Password'
     SuccessLogin:
       type: object

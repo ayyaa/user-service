@@ -11,6 +11,6 @@ import (
 type RepositoryInterface interface {
 	Insert(ctx context.Context, user UserReq) (id int, err error)
 	GetUserByID(ctx context.Context, id int) (user UserRes, err error)
-	EditUser(ctx context.Context, user UserReq, id int) (err error)
-	GetUserByPhone(ctx context.Context, phone string) (user UserRes, err error)
+	UpdateUser(ctx context.Context, user UserReq, id int) (err error)
+	GetUserByPhone(ctx context.Context, phoneNumber string) (user UserRes, err error)
 }

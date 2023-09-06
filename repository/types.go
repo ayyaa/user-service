@@ -7,22 +7,18 @@ import (
 	"gopkg.in/guregu/null.v3"
 )
 
-type GetTestByIdOutput struct {
-	Name string
-}
-
+// models user request
 type UserReq struct {
-	Name      string    `json:"name,omitempty" db:"name"`
-	Phone     string    `json:"phone,omitempty" db:"phone"`
+	FullName      string    `json:"name,omitempty" db:"name"`
+	PhoneNumber     string    `json:"phone_number,omitempty" db:"phone_number"`
 	Password  string    `json:"password,omitempty" db:"password"`
-	CreatedAt time.Time `json:"created_at,omitempty" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at,omitempty" db:"updated_at"`
 }
 
+// models user response
 type UserRes struct {
 	Id        int         `json:"id,omitempty" db:"id"`
-	Name      null.String `json:"name,omitempty" db:"name"`
-	Phone     null.String `json:"phone,omitempty" db:"phone"`
+	FullName      null.String `json:"name,omitempty" db:"name"`
+	PhoneNumber     null.String `json:"phone_number,omitempty" db:"phone_number"`
 	Password  string      `json:"password,omitempty" db:"password"`
 	CreatedAt time.Time   `json:"created_at,omitempty" db:"created_at"`
 	UpdatedAt time.Time   `json:"updated_at,omitempty" db:"updated_at"`

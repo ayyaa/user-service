@@ -5,24 +5,27 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"database/sql"
 
 	"github.com/SawitProRecruitment/UserService/generated"
 	"github.com/SawitProRecruitment/UserService/repository"
 	"github.com/labstack/echo/v4"
 )
 
-// (GET /Register)
+// (POST /Register)
 func (s *Server) Register(ctx echo.Context) error {
 	var (
 		req generated.RegisterUserRequest
 	)
 
+	// Bind data from request
 	err := ctx.Bind(&req)
 	if err != nil {
 		panic(err)
 	}
 
-	_, errorMessages := UserValidation(req)
+	// Validate struct 
+	_, errorMessages := Validation(req)
 	if len(errorMessages) > 0 {
 		errorString := strings.Join(errorMessages, "\n")
 		return ctx.JSON(http.StatusBadRequest, generated.Message{
@@ -31,67 +34,76 @@ func (s *Server) Register(ctx echo.Context) error {
 		})
 	}
 
+	// initial mapping add to database
 	newUser := repository.UserReq{
-		Name:     req.Name,
+		FullName:     req.FullName,
 		Password: hashAndSalt([]byte(req.Password)),
-		Phone:    req.Phone,
+		PhoneNumber:    req.PhoneNumber,
 	}
+
+	// call method insert to database
 	id, err := s.Repository.Insert(ctx.Request().Context(), newUser)
 	if err != nil {
+		// check if error contains "uq_users_phone", phone number already exist
 		if strings.Contains(err.Error(), "uq_users_phone") {
 			return ctx.JSON(http.StatusConflict, generated.Message{
 				Status:  false,
-				Message: "Conflict phone number already exist",
+				Message: ErrorConflictPhoneNumber,
 			})
 		}
 
+		// return if any error
 		return ctx.JSON(http.StatusInternalServerError, generated.Message{
 			Status:  false,
 			Message: err.Error(),
 		})
 	}
 
+	// return success
 	return ctx.JSON(http.StatusOK, generated.UserId{
 		Id: strconv.Itoa(id),
 	})
 }
 
+// (GET /GetUser)
 func (s *Server) GetUser(ctx echo.Context) error {
+	id := ctx.Get("userId").(int)
 
-	id := ctx.Param("id")
-	userId, err := strconv.Atoi(id)
+	// Get user by id
+	user, err := s.Repository.GetUserByID(ctx.Request().Context(), id)
 	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, generated.Message{
-			Status:  false,
-			Message: "Error Converting string to int",
-		})
-	}
-	user, err := s.Repository.GetUserByID(ctx.Request().Context(), userId)
-	if err != nil {
-		if err.Error() == "sql: no rows in result set" {
+		// check if no rows user
+		if err == sql.ErrNoRows {
 			return ctx.JSON(http.StatusNotFound, generated.Message{
 				Status:  false,
-				Message: "User id not found",
+				Message: fmt.Sprintf(ErrorUserIdNotFoundf, id),
 			})
 		}
+
+		// return error
 		return ctx.JSON(http.StatusInternalServerError, generated.Message{
 			Status:  false,
 			Message: err.Error(),
 		})
 	}
 
+	// build response from database
 	resp := generated.UserShort{
-		Name:  user.Name.ValueOrZero(),
-		Phone: user.Phone.ValueOrZero(),
+		FullName:  user.FullName.ValueOrZero(),
+		PhoneNumber: user.PhoneNumber.ValueOrZero(),
 	}
 
+	// return success
 	return ctx.JSON(http.StatusOK, resp)
 }
 
+// (POST /Login)
 func (s *Server) Login(ctx echo.Context) error {
 
+	// intial
 	var req generated.LoginReq
 
+	// Bind data from request
 	err := ctx.Bind(&req)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, generated.Message{
@@ -100,7 +112,8 @@ func (s *Server) Login(ctx echo.Context) error {
 		})
 	}
 
-	userData, err := s.Repository.GetUserByPhone(ctx.Request().Context(), req.Phone)
+	// validate if any user by phone
+	userData, err := s.Repository.GetUserByPhone(ctx.Request().Context(), req.PhoneNumber)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, generated.Message{
 			Status:  false,
@@ -108,39 +121,48 @@ func (s *Server) Login(ctx echo.Context) error {
 		})
 	}
 
+	// if no sql rows, user not found
 	if userData.Id == 0 {
 		return ctx.JSON(http.StatusNotFound, generated.Message{
 			Status:  false,
-			Message: "Phone number not found, please register",
+			Message: ErrorPhoneNumberNotExist,
 		})
 	}
 
+	// compare password from request and database
 	match := comparePasswords(userData.Password, []byte(req.Password))
 
 	if match {
-		token, err := generateToken(userData.Phone.ValueOrZero())
+		// generate token auth
+		token, err := generateToken(userData)
+		fmt.Println(err)
 		if err != nil {
-			return ctx.JSON(http.StatusInternalServerError, "Error generating token")
+			return ctx.JSON(http.StatusInternalServerError, ErrorGenerateToken)
 		}
 
+		// return succes and user token
 		return ctx.JSON(http.StatusOK, generated.SuccessLogin{
 			Status:  true,
-			Message: fmt.Sprintf("Success Login user"),
+			Message: SuccesLogin,
 			Token:   token,
 		})
 	}
 
-	return ctx.JSON(http.StatusUnauthorized, generated.Message{
+	// return error
+	return ctx.JSON(http.StatusBadRequest, generated.Message{
 		Status:  false,
-		Message: "Unauthorized",
+		Message: ErrorUnsuccessfulLogin,
 	})
 
 }
 
+// (PATCH /EditUser)
 func (s *Server) EditUser(ctx echo.Context) error {
+	id := ctx.Get("userId").(int)
 
-	id := ctx.Param("id")
-	userId, err := strconv.Atoi(id)
+	// Bind data from request
+	var req generated.UserShort
+	err := ctx.Bind(&req)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, generated.Message{
 			Status:  false,
@@ -148,32 +170,25 @@ func (s *Server) EditUser(ctx echo.Context) error {
 		})
 	}
 
-	userExst, err := s.Repository.GetUserByID(ctx.Request().Context(), userId)
-	if err != nil && err.Error() != "sql: no rows in result set" {
+	// check user by id from db
+	userExst, err := s.Repository.GetUserByID(ctx.Request().Context(), id)
+	if err != nil && err != sql.ErrNoRows {
 		return ctx.JSON(http.StatusInternalServerError, generated.Message{
 			Status:  false,
 			Message: err.Error(),
 		})
 	}
 
+	// if no sql rows, user not found
 	if userExst.Id == 0 {
 		return ctx.JSON(http.StatusBadRequest, generated.Message{
 			Status:  false,
-			Message: fmt.Sprintf("User id %d not found", userId),
+			Message: fmt.Sprintf(ErrorUserIdNotFoundf, id),
 		})
 	}
 
-	var req generated.UserShort
-
-	err = ctx.Bind(&req)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, generated.Message{
-			Status:  false,
-			Message: err.Error(),
-		})
-	}
-
-	_, errorMessages := UserValidation(req)
+	// validate request edit
+	_, errorMessages := Validation(req)
 	if len(errorMessages) > 0 {
 		errorString := strings.Join(errorMessages, "\n")
 		return ctx.JSON(http.StatusBadRequest, generated.Message{
@@ -181,8 +196,8 @@ func (s *Server) EditUser(ctx echo.Context) error {
 			Message: errorString,
 		})
 	}
-
-	userData, err := s.Repository.GetUserByPhone(ctx.Request().Context(), req.Phone)
+	// check if phone already used
+	userData, err := s.Repository.GetUserByPhone(ctx.Request().Context(), req.PhoneNumber)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, generated.Message{
 			Status:  false,
@@ -190,72 +205,45 @@ func (s *Server) EditUser(ctx echo.Context) error {
 		})
 	}
 
+	// check if new phone number already user for another user
 	if userData.Id != userExst.Id {
 		return ctx.JSON(http.StatusConflict, generated.Message{
 			Status:  false,
-			Message: "Conflict phone number already exist",
+			Message: ErrorConflictPhoneNumber,
 		})
 	}
 
-	newName := req.Name
-	if req.Name == "" {
-		newName = userExst.Name.ValueOrZero()
+	newName := req.FullName
+	if req.FullName == "" {
+		newName = userExst.FullName.ValueOrZero()
 	}
 
+	// mapping data 
 	user := repository.UserReq{
-		Phone: req.Phone,
-		Name:  newName,
+		PhoneNumber: req.PhoneNumber,
+		FullName:  newName,
 	}
 
-	err = s.Repository.EditUser(ctx.Request().Context(), user, userId)
+	// call method update user
+	err = s.Repository.UpdateUser(ctx.Request().Context(), user, id)
 	if err != nil {
+		// check if error contains "uq_users_phone", phone number already exist
 		if strings.Contains(err.Error(), "uq_users_phone") {
 			return ctx.JSON(http.StatusConflict, generated.Message{
 				Status:  false,
-				Message: "Conflict phone number already exist",
+				Message: ErrorConflictPhoneNumber,
 			})
 		}
 
-		return ctx.JSON(http.StatusInternalServerError, generated.Message{
+		return ctx.JSON(http.StatusForbidden, generated.Message{
 			Status:  false,
 			Message: err.Error(),
 		})
 	}
 
+	// return success
 	return ctx.JSON(http.StatusOK, generated.Message{
 		Status:  true,
-		Message: fmt.Sprintf("Success update user id %d", userId),
+		Message: fmt.Sprintf(SuccessUpdateUserById, id),
 	})
-}
-
-func (s *Server) Protected(ctx echo.Context) error {
-
-	id := ctx.Param("id")
-	userId, err := strconv.Atoi(id)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, generated.Message{
-			Status:  false,
-			Message: "Error Converting string to int",
-		})
-	}
-	user, err := s.Repository.GetUserByID(ctx.Request().Context(), userId)
-	if err != nil {
-		if err.Error() == "sql: no rows in result set" {
-			return ctx.JSON(http.StatusNotFound, generated.Message{
-				Status:  false,
-				Message: "User id not found",
-			})
-		}
-		return ctx.JSON(http.StatusInternalServerError, generated.Message{
-			Status:  false,
-			Message: err.Error(),
-		})
-	}
-
-	resp := generated.UserShort{
-		Name:  user.Name.ValueOrZero(),
-		Phone: user.Phone.ValueOrZero(),
-	}
-
-	return ctx.JSON(http.StatusOK, resp)
 }

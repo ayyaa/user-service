@@ -2,28 +2,34 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"os"
-
+	"context"
 	"github.com/SawitProRecruitment/UserService/generated"
 	"github.com/SawitProRecruitment/UserService/handler"
 	"github.com/SawitProRecruitment/UserService/repository"
-	"github.com/golang-jwt/jwt"
-
 	"github.com/joho/godotenv"
-
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/deepmap/oapi-codegen/pkg/middleware"
+	"github.com/getkin/kin-openapi/openapi3filter"
 )
 
 func main() {
 
 	e := echo.New()
 
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	// e.Use(verifyToken)
+	swagger, err := generated.GetSwagger()
 
+	if err != nil {
+		os.Exit(1)
+	}
+
+	validatorOptions := &middleware.Options{}
+
+	validatorOptions.Options.AuthenticationFunc = func(c context.Context, input *openapi3filter.AuthenticationInput) error {
+		return handler.MiddlewareAuth(c, input)
+	}
+
+	e.Use(middleware.OapiRequestValidatorWithOptions(swagger, validatorOptions))
 	var server generated.ServerInterface = newServer()
 
 	generated.RegisterHandlers(e, server)
@@ -45,47 +51,4 @@ func newServer() *handler.Server {
 		Repository: repo,
 	}
 	return handler.NewServer(opts)
-}
-
-func verifyToken(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(ctx echo.Context) error {
-		publicKey := handler.LoadPublicKey()
-
-		tokenString := ctx.Request().Header.Get("Authorization")
-		if tokenString == "" {
-			return ctx.JSON(http.StatusUnauthorized, generated.Message{
-				Status:  false,
-				Message: "Missing token",
-			})
-		}
-
-		token, err := jwt.ParseWithClaims(tokenString, &handler.Claims{}, func(token *jwt.Token) (interface{}, error) {
-			return publicKey, nil
-		})
-
-		if err != nil {
-			return ctx.JSON(http.StatusUnauthorized, generated.Message{
-				Status:  false,
-				Message: "Invalid token",
-			})
-		}
-
-		if !token.Valid {
-			return ctx.JSON(http.StatusUnauthorized, generated.Message{
-				Status:  false,
-				Message: "Invalid token",
-			})
-		}
-
-		claims, ok := token.Claims.(*handler.Claims)
-		if !ok {
-			return ctx.JSON(http.StatusUnauthorized, generated.Message{
-				Status:  false,
-				Message: "Invalid token claims",
-			})
-		}
-
-		ctx.Set("phone", claims.Phone)
-		return next(ctx)
-	}
 }
