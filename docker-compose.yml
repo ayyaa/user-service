@@ -1,5 +1,10 @@
 services:
   app:
+    # image: sawit:latest
+    # ports:
+    #   - 1323:1323
+    # expose:
+    #   - 1323
     build: .
     ports:
       - "8080:1323"
